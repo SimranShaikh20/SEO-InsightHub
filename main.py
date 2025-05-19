@@ -1,34 +1,58 @@
 import streamlit as st
-from scraper.page_scraper import scrape_page
-from analyzer.keyword_analysis import analyze_keywords
-from analyzer.seo_checks import check_title, check_meta_description, check_image_alts
-from llm.content_rewriter import rewrite_text
-from reporting.seo_scorecard import create_seo_scorecard
-from config import *
+from agents.firecrawl_agent import crawl_website
+from agents.exa_agent import get_keyword_trends
+from agents.groq_agent import generate_seo_tips
 
-st.set_page_config(page_title="SEO Analyzer & Optimizer", layout="wide")
+st.set_page_config(page_title="SEO InsightHub", layout="wide")
 
-st.title("🔍 SEO Analyzer & Optimizer")
-url = st.text_input("Enter the page URL to analyze:")
+st.title("SEO InsightHub – Analyze, Compare, and Optimize Your Business Website")
 
-if st.button("Run Analysis") and url:
-    with st.spinner("Scraping and analyzing content..."):
-        content = scrape_page(url)
-        keywords = analyze_keywords(content['text'])
-        new_meta = rewrite_text(content['meta_desc'], [kw for kw, _ in keywords])
-        title_ok = check_title(content['title'])
-        meta_ok = check_meta_description(content['meta_desc'])
-        missing_alts = check_image_alts(content['images'])
-        scorecard = create_seo_scorecard(content, keywords, new_meta)
+st.sidebar.header("Input Your Details")
 
-    st.subheader("📊 SEO Scorecard")
-    st.json(scorecard)
+# Inputs
+user_website = st.sidebar.text_input("Your Website URL", "https://example.com")
 
-    st.subheader("💡 Suggestions")
-    st.markdown(f"**Title Check** ✅: {title_ok}")
-    st.markdown(f"**Meta Description Check** ✅: {meta_ok}")
-    st.markdown(f"**Images Missing ALT Text:** {len(missing_alts)}")
-    st.markdown("**Top Keywords:**")
-    st.write(keywords)
-    st.markdown("**Suggested Meta Description Rewrite (LLM):**")
-    st.success(new_meta)
+competitor_1 = st.sidebar.text_input("Competitor URL 1", "https://competitor1.com")
+competitor_2 = st.sidebar.text_input("Competitor URL 2", "https://competitor2.com")
+competitor_3 = st.sidebar.text_input("Competitor URL 3 (Optional)", "")
+
+competitor_urls = [url for url in [competitor_1, competitor_2, competitor_3] if url.strip() != ""]
+
+keywords_input = st.sidebar.text_input("Relevant Business Keywords (comma separated)", "seo, marketing, local business")
+keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
+
+if st.sidebar.button("Analyze SEO"):
+
+    with st.spinner("Crawling websites..."):
+        user_seo = crawl_website(user_website)
+        competitors_seo = [crawl_website(url) for url in competitor_urls]
+
+    with st.spinner("Fetching keyword trends..."):
+        keyword_trends = get_keyword_trends(keywords)
+
+    # Show user website SEO summary
+    st.subheader(f"SEO Analysis for Your Website: {user_website}")
+    st.write(user_seo)
+
+    # Show competitors SEO summaries side by side
+    st.subheader("Competitors SEO Analysis")
+    for idx, comp_seo in enumerate(competitors_seo, 1):
+        st.markdown(f"**Competitor {idx}: {comp_seo['url']}**")
+        st.write(comp_seo)
+
+    # Show keyword trends
+    st.subheader("Keyword Trends")
+    for kw, trend_data in keyword_trends.items():
+        st.markdown(f"**Keyword:** {kw}")
+        st.write(trend_data)
+
+    # Prepare summary text for GROQ AI tips
+    summary_text = f"User website SEO data: {user_seo}\n\nCompetitors SEO data: {competitors_seo}\n\nKeyword trends: {keyword_trends}"
+
+    with st.spinner("Generating AI SEO improvement tips..."):
+        ai_tips = generate_seo_tips(summary_text)
+
+    st.subheader("AI-Generated SEO Improvement Tips")
+    st.write(ai_tips)
+
+    # PDF Report generation can be added here later
