@@ -1,58 +1,72 @@
 import streamlit as st
-from agents.firecrawl_agent import crawl_website
-from agents.exa_agent import get_keyword_trends
-from agents.groq_agent import generate_seo_tips
+from agents.crawl_agent import crawl_website
+from agents.keyword_agent import get_keyword_trends
+from agents.groq_agent import get_seo_recommendations
+from utils.pdf_generator import generate_pdf_report
 
-st.set_page_config(page_title="SEO InsightHub", layout="wide")
+def main():
+    st.title("SEO InsightHub - Analyze, Compare, and Optimize Your Website")
 
-st.title("SEO InsightHub – Analyze, Compare, and Optimize Your Business Website")
+    st.sidebar.header("Input Data")
+    your_website = st.sidebar.text_input("Your Website URL")
+    competitor_urls = st.sidebar.text_area("Competitor URLs (one per line)").splitlines()
+    keywords_input = st.sidebar.text_input("Relevant Business Keywords (comma separated)")
+    keywords = [k.strip() for k in keywords_input.split(',') if k.strip()]
 
-st.sidebar.header("Input Your Details")
+    if st.sidebar.button("Analyze SEO"):
 
-# Inputs
-user_website = st.sidebar.text_input("Your Website URL", "https://example.com")
+        if not your_website or len(competitor_urls) == 0 or len(keywords) == 0:
+            st.error("Please enter your website, at least one competitor URL, and keywords.")
+            return
 
-competitor_1 = st.sidebar.text_input("Competitor URL 1", "https://competitor1.com")
-competitor_2 = st.sidebar.text_input("Competitor URL 2", "https://competitor2.com")
-competitor_3 = st.sidebar.text_input("Competitor URL 3 (Optional)", "")
+        st.info("Crawling websites...")
+        sites = [your_website] + competitor_urls[:3]
+        crawl_results = [crawl_website(url) for url in sites]
 
-competitor_urls = [url for url in [competitor_1, competitor_2, competitor_3] if url.strip() != ""]
-
-keywords_input = st.sidebar.text_input("Relevant Business Keywords (comma separated)", "seo, marketing, local business")
-keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
-
-if st.sidebar.button("Analyze SEO"):
-
-    with st.spinner("Crawling websites..."):
-        user_seo = crawl_website(user_website)
-        competitors_seo = [crawl_website(url) for url in competitor_urls]
-
-    with st.spinner("Fetching keyword trends..."):
+        st.info("Fetching keyword trends...")
         keyword_trends = get_keyword_trends(keywords)
 
-    # Show user website SEO summary
-    st.subheader(f"SEO Analysis for Your Website: {user_website}")
-    st.write(user_seo)
+        st.info("Generating AI SEO recommendations...")
+        # Create summary text from crawl data for AI prompt
+        summary_text = ""
+        for site in crawl_results:
+            summary_text += f"Site: {site['url']}\n"
+            if 'error' in site:
+                summary_text += f"Error: {site['error']}\n"
+            else:
+                summary_text += f"Title: {site['title']}\n"
+                summary_text += f"Meta: {site['meta_description']}\n"
+                for htag, texts in site['headings'].items():
+                    summary_text += f"{htag.upper()}: {', '.join(texts)}\n"
+            summary_text += "\n"
 
-    # Show competitors SEO summaries side by side
-    st.subheader("Competitors SEO Analysis")
-    for idx, comp_seo in enumerate(competitors_seo, 1):
-        st.markdown(f"**Competitor {idx}: {comp_seo['url']}**")
-        st.write(comp_seo)
+        seo_tips = get_seo_recommendations(summary_text)
 
-    # Show keyword trends
-    st.subheader("Keyword Trends")
-    for kw, trend_data in keyword_trends.items():
-        st.markdown(f"**Keyword:** {kw}")
-        st.write(trend_data)
+        st.subheader("SEO Comparison Dashboard")
+        for site in crawl_results:
+            st.markdown(f"### Website: {site['url']}")
+            if 'error' in site:
+                st.error(f"Failed to crawl: {site['error']}")
+                continue
+            st.write(f"**Title:** {site['title']}")
+            st.write(f"**Meta Description:** {site['meta_description']}")
+            st.write("**Headings:**")
+            for htag, texts in site['headings'].items():
+                st.write(f"{htag.upper()}: {', '.join(texts)}")
 
-    # Prepare summary text for GROQ AI tips
-    summary_text = f"User website SEO data: {user_seo}\n\nCompetitors SEO data: {competitors_seo}\n\nKeyword trends: {keyword_trends}"
+        st.subheader("Keyword Trends")
+        for kw, info in keyword_trends.items():
+            st.write(f"Keyword: {kw}")
+            st.write(f"Search Volume: {info['search_volume']}")
+            st.write(f"Related Queries: {', '.join(info['related_queries'])}")
 
-    with st.spinner("Generating AI SEO improvement tips..."):
-        ai_tips = generate_seo_tips(summary_text)
+        st.subheader("AI SEO Improvement Tips")
+        st.write(seo_tips)
 
-    st.subheader("AI-Generated SEO Improvement Tips")
-    st.write(ai_tips)
+        if st.button("Download PDF Report"):
+            filename = generate_pdf_report(crawl_results)
+            with open(filename, "rb") as f:
+                st.download_button("Download SEO Report PDF", f, file_name=filename)
 
-    # PDF Report generation can be added here later
+if __name__ == "__main__":
+    main()
