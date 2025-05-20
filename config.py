@@ -1,13 +1,13 @@
 # config.py
 
 # Firecrawl API key
-FIRECRAWL_API_KEY = "your_firecrawl_api_key_here"
+FIRECRAWL_API_KEY = ""
 
 # Exa API key
-EXA_API_KEY = "your_exa_api_key_here"
+EXA_API_KEY = ""
 
 # GROQ API key
-GROQ_API_KEY = "your_groq_api_key_here"
+GROQ_API_KEY = ""
 
-# AGNO API key (if needed)
-AGNO_API_KEY = "your_agno_api_key_here"
+# # 
+# AGNO_API_KEY = "your_agno_api_key_here"

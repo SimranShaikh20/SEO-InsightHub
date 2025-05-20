@@ -3,7 +3,7 @@ from services.firecrawl_service import crawl_site
 from services.exa_service import get_trending_keywords
 from services.groq_service import get_seo_advice
 from services.agno_agent import agno_agent_augment
-from utils.pdf_generator import generate_pdf_report
+from utils.report_generator import generate_pdf_report
 
 st.set_page_config(page_title="SEO InsightHub", layout="wide")
 st.title("SEO InsightHub 📊")

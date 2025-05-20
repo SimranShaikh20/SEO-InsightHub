@@ -7,10 +7,14 @@ class PDF(FPDF):
 
     def add_section(self, title, content):
         self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, title, 0, 1)
+        self.cell(0, 10, sanitize_text(title), 0, 1)
         self.set_font('Arial', '', 10)
-        self.multi_cell(0, 8, content)
+        self.multi_cell(0, 8, sanitize_text(content))
         self.ln(4)
+
+def sanitize_text(text):
+    """Remove characters not compatible with latin-1 encoding (like emojis)."""
+    return text.encode('ascii', 'ignore').decode('ascii') if isinstance(text, str) else str(text)
 
 def format_structured_data(data):
     """
@@ -38,25 +42,24 @@ def format_structured_data(data):
     elif isinstance(data, list):
         return "\n".join(f"- {item}" for item in data)
     else:
-        # fallback to str
         return str(data)
 
 def generate_pdf_report(analysis_summary, keywords, groq_advice, agno_output):
     pdf = PDF()
     pdf.add_page()
 
-    # Format analysis_summary if it's structured data
-    formatted_summary = format_structured_data(analysis_summary)
+    # Format and sanitize structured data
+    formatted_summary = sanitize_text(format_structured_data(analysis_summary))
     pdf.add_section("Website Analysis Summary", formatted_summary)
 
-    # keywords might be list or string
+    # Handle keywords
     if isinstance(keywords, (list, tuple)):
         formatted_keywords = ", ".join(keywords)
     else:
         formatted_keywords = str(keywords)
-    pdf.add_section("Trending Keywords", formatted_keywords)
+    pdf.add_section("Trending Keywords", sanitize_text(formatted_keywords))
 
-    pdf.add_section("GROQ AI Advice", groq_advice)
-    pdf.add_section("AGNO Agent Insight", agno_output)
+    pdf.add_section("GROQ AI Advice", sanitize_text(groq_advice))
+    pdf.add_section("AGNO Agent Insight", sanitize_text(agno_output))
 
     pdf.output("SEO_Report.pdf")

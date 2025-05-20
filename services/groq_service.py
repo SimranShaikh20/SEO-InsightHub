@@ -1,17 +1,28 @@
 import requests
+from config import GROQ_API_KEY
 
-def get_seo_advice(summary):
-    groq_api = "https://api.groq.com/v1/chat/completions"
+def get_seo_advice(prompt):
+    url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
-        "Authorization": "Bearer YOUR_GROQ_API_KEY",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {
-        "model": "mixtral-8x7b-32768",
+    data = {
+        "model": "mixtral-8x7b-32768",  # or your specified model
         "messages": [
-            {"role": "system", "content": "You are an SEO expert."},
-            {"role": "user", "content": summary}
-        ]
+            {"role": "system", "content": "You're an SEO expert."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
     }
-    response = requests.post(groq_api, json=payload, headers=headers)
-    return response.json()['choices'][0]['message']['content']
+
+    response = requests.post(url, json=data, headers=headers)
+    result = response.json()
+
+    # Check if 'choices' exist in response
+    if "choices" in result:
+        return result["choices"][0]["message"]["content"]
+    else:
+        # Print/log error and return fallback message
+        print("GROQ API error:", result)
+        return "⚠️ Error: Unable to fetch SEO advice from GROQ AI."
